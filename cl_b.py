@@ -20,7 +20,7 @@ def receive_messages(sock):
             elif "error" in data:
                 print(f"\n[ERROR: {data['error']}]")
             elif "message" in data:
-                print(f"\n  [Person B @ {data['timestamp']}]: {data['message']}")
+                print(f"\n  [Person A @ {data['timestamp']}]: {data['message']}")
                 print("You: ", end="", flush=True)
         except Exception:
             break
