@@ -6,6 +6,9 @@ HOST = "127.0.0.1"
 PORT = 9000
 IDENTITY = "B"
 
+ai_mode = False
+
+
 def receive_messages(sock):
     while True:
         try:
@@ -15,36 +18,57 @@ def receive_messages(sock):
                 break
             data = json.loads(raw.decode())
 
-            if "status" in data:
+            if "typing" in data:
+                if data["typing"]:
+                    print(f"\n  [Person A is typing...]", flush=True)
+                else:
+                    print(f"\r{' ' * 30}\r", end="", flush=True)
+
+            elif "status" in data:
                 print(f"\n[{data['status']}]")
+
             elif "error" in data:
                 print(f"\n[ERROR: {data['error']}]")
+
             elif "message" in data:
-                print(f"\n  [Person A @ {data['timestamp']}]: {data['message']}")
+                ai_tag = " [AI handled]" if data.get("ai_handled") else ""
+                print(f"\n  [Person A @ {data['timestamp']}]: {data['message']}{ai_tag}")
                 print("You: ", end="", flush=True)
+
         except Exception:
             break
 
 
 def main():
+    global ai_mode
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
-
-    # Send identity
     sock.send(json.dumps({"identity": IDENTITY}).encode())
 
-    # Start receiving in background
     t = threading.Thread(target=receive_messages, args=(sock,), daemon=True)
     t.start()
 
     print("=== Person B's Chat Window ===")
-    print("Type a message and press Enter to send.\n")
+    print("Commands: /ai on | /ai off | /exit\n")
 
     while True:
         try:
             msg = input("You: ")
-            if msg.strip():
+
+            if msg.strip() == "/ai on":
+                ai_mode = True
+                sock.send(json.dumps({"ai_switch": True}).encode())
+                continue
+            elif msg.strip() == "/ai off":
+                ai_mode = False
+                sock.send(json.dumps({"ai_switch": False}).encode())
+                continue
+            elif msg.strip() == "/exit":
+                break
+            elif msg.strip() and not ai_mode:
                 sock.send(json.dumps({"message": msg}).encode())
+
         except (KeyboardInterrupt, EOFError):
             print("\n[Exiting]")
             break
